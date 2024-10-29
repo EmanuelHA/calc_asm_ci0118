@@ -1,13 +1,29 @@
 section .text
-    global _start
+    global _main
+    global _process_data
+    global _mem_reset
 
-_start:
+; Parámetros en EDI param#1, ESI param#2
+_process_data:
+    push rbx
+    mov dword[val1], edi
+    mov dword[val2], esi
+    mov dword[opcode], edx
+    call _op_calc
+    pop rbx
+    ret
+
+_mem_reset:
+    mov dword[val1], 0
+    mov dword[val2], 0
+    ret
+
+_main:
     ; Solicitud de op
     mov ecx, msg_start
     mov edx, msg_start_len
     call _print
     call _read
-    xor eax, eax
     call _str_to_int
     mov [opcode], eax
 
@@ -16,7 +32,6 @@ _start:
     mov edx, msg_a_in_len
     call _print
     call _read
-    xor eax, eax        ; Limpia eax antes de hacer la conversion
     call _str_to_int
     mov [val1], eax
 
@@ -25,7 +40,6 @@ _start:
     mov edx, msg_b_in_len
     call _print
     call _read
-    xor eax, eax        ; Limpia eax antes de hacer la conversion
     call _str_to_int
     mov [val2], eax
 
@@ -37,12 +51,12 @@ _start:
     mov ecx, msg_res
     mov edx, msg_res_len
     call _print
-    mov eax, [result]       ; N -> EAX
-    call _int_to_str        ; RESULT -> ECX, STR_LEN -> ESI
-    mov byte [ecx + esi], 0x0A   ; Concatena "\n" al final
-    inc esi                 ; buffer legth++
-    mov byte [ecx + esi], 0      ; NUL al final del buffer
-    mov edx, esi        ; STR_LEN calculado en _int_to_str
+    mov eax, [result]               ; N -> EAX
+    call _int_to_str                ; RESULT -> ECX, STR_LEN -> ESI
+    mov byte [ecx + esi], 0x0A      ; Concatena "\n" al final
+    inc esi                         ; buffer legth++
+    mov byte [ecx + esi], 0         ; NUL al final del buffer
+    mov edx, esi                    ; STR_LEN calculado en _int_to_str
     call _print
 
     ; Llamada al sistema para salir con normalidad
@@ -69,6 +83,11 @@ _read:
 
 ; Convierte los caracteres del buffer a numero entero (REQ: eax = 0, ecx = buffer | RET: eax = result)
 _str_to_int:
+    xor eax, eax            ; Limpia eax antes de comenzar la conversion
+loop_s_t_i:
+    movzx ebx, byte [ecx]   ; Carga el caracter actual (ECX) en EBX
+    cmp bl, 0x0A            ; Compara el caracter con '\n' (0x0A)
+    je  eol                 ; Salta al retorno en caso de '\n'
     movzx ebx, byte [ecx]   ; Carga el caracter actual (ECX) en EBX
     cmp bl, 0x0A            ; Compara el caracter con '\n' (0x0A)
     je  eol                 ; Salta al retorno en caso de '\n'
@@ -77,12 +96,12 @@ _str_to_int:
     imul eax, eax, 0x0A     ; Multiplicar EAX por 10
     add eax, ebx            ; Suma el ultimo digito extraido de la cadena 
     inc ecx                 ; Avanza al siguiente caracter
-    jmp _str_to_int
+    jmp loop_s_t_i
 
 eol:
     ret
 
-;; Convierte un entero a una cadena de caracteres (REQ: eax = n, ecx = buffer | RET: esi = STR_LEN) ---> (invierte el orden XDXD)
+;; Convierte un entero a una cadena de caracteres (REQ: eax = n, ecx = buffer | RET: esi = STR_LEN) ---> (invierte el orden XD)
 ;_int_to_str:
 ;    mov edi, 0x0A           ; Divisor x10 para extraer digitos del numero
 ;    xor esi, esi            ; index = 0
@@ -174,7 +193,7 @@ section .data
 
 section .bss
     buffer  resb 0x10   ; Reserva 16 bytes para la entrada de datos
-    opcode  resw 0x02   ; Reserva 4 bytes para guardar el # de operacion
-    val1    resw 0x02   ; Reserva 4 bytes para guardar el primer operando
-    val2    resw 0x02   ; Reserva 4 bytes para guardar el segundo operando
-    result  resw 0x02   ; Reserva 4 bytes para guardar el resultado
+    opcode  resb 0x04   ; Reserva 4 bytes para guardar el # de operacion
+    val1    resb 0x04   ; Reserva 4 bytes para guardar el primer operando
+    val2    resb 0x04   ; Reserva 4 bytes para guardar el segundo operando
+    result  resb 0x04   ; Reserva 4 bytes para guardar el resultado
