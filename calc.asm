@@ -174,6 +174,7 @@ _mul:
 _div:
     mov eax, [val1]
     mov ebx, [val2]
+    xor edx, edx
     div ebx
     ret
 
